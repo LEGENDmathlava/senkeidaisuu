@@ -197,34 +197,43 @@ impl Matrix {
         }
     }
 
-    pub fn rank(&self) -> usize {
+    pub fn rank(&self) -> Result<usize, Error> {
         let mut temp = self.clone();
         for i in 0..self.rows {
             let (k, j) = match temp.my_special_search_in_rank(i) {
                 Some((x, y)) => (x, y),
-                None => return i,
+                None => return Ok(i),
             };
             if i != j {
                 temp = temp.row_switching_transformation(i, j).expect("安全なはず");
             }
             let value = 1.0 / temp.mat[i][k];
-            temp = temp
-                .row_multiplying_transformation(i, value)
-                .expect("0除算も起こらないはず");
+            temp = match temp.row_multiplying_transformation(i, value) {
+                Ok(v) => v,
+                Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                Err(_) => panic!("そんなはずはない"),
+            };
             for j in (i + 1)..self.rows {
                 let value = temp.mat[j][k];
-                temp = temp
-                    .row_addition_transformation(i, j, -value)
-                    .expect("大丈夫なはず");
+                temp = match temp.row_addition_transformation(i, j, -value) {
+                    Ok(v) => v,
+                    Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                    Err(_) => panic!("こんなことはあり得ない"),
+                };
             }
         }
-        self.rows
+        Ok(self.rows)
     }
 
     pub fn inverse(&self) -> Result<Self, Error> {
         if self.cols != self.rows {
             Err(Error::from(ErrorKind::MissmMatchSizeOfMatrix))
-        } else if self.rank() != self.rows {
+        } else if match self.rank() {
+            Ok(v) => v,
+            Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+            Err(_) => panic!("理論上あり得ない"),
+        } != self.rows
+        {
             Err(Error::from(ErrorKind::SingularMatrix))
         } else {
             let mut temp = Matrix {
@@ -248,22 +257,28 @@ impl Matrix {
                         .expect("絶対安全なはず");
                 }
                 let value = 1.0 / temp.mat[i][i];
-                temp = temp
-                    .row_multiplying_transformation(i, value)
-                    .expect("おそらく0除算も起こらないはず");
+                temp = match temp.row_multiplying_transformation(i, value) {
+                    Ok(v) => v,
+                    Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                    Err(_) => panic!("大丈夫か！？"),
+                };
                 for j in (i + 1)..self.rows {
                     let value = temp.mat[j][i];
-                    temp = temp
-                        .row_addition_transformation(i, j, -value)
-                        .expect("大丈夫なはず2");
+                    temp = match temp.row_addition_transformation(i, j, -value) {
+                        Ok(v) => v,
+                        Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                        Err(_) => panic!("大丈夫なのか!?"),
+                    };
                 }
             }
             for i in (1..self.rows).rev() {
                 for j in (0..i).rev() {
                     let value = temp.mat[j][i];
-                    temp = temp
-                        .row_addition_transformation(i, j, -value)
-                        .expect("大丈夫なはず3");
+                    temp = match temp.row_addition_transformation(i, j, -value) {
+                        Ok(v) => v,
+                        Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                        Err(_) => panic!("おい大丈夫か！？"),
+                    };
                 }
             }
             let mut ans_vec_vec = vec![];
@@ -285,7 +300,7 @@ impl Matrix {
     pub fn det(&self) -> Result<f64, Error> {
         if self.cols != self.rows {
             Err(Error::from(ErrorKind::MissmMatchSizeOfMatrix))
-        }else {
+        } else {
             let mut temp = self.clone();
             for i in 0..self.rows {
                 let j = match temp.my_special_search(i) {
@@ -293,13 +308,19 @@ impl Matrix {
                     None => return Ok(0.0),
                 };
                 if i != j {
-                    temp = temp.row_addition_transformation(j, i, 1.0).expect("きっと大丈夫じゃない");
+                    temp = match temp.row_addition_transformation(j, i, 1.0) {
+                        Ok(v) => v,
+                        Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                        Err(_) => panic!("おいおいダイジョブかよ"),
+                    };
                 }
                 for j in (i + 1)..self.rows {
-                    let value = temp.mat[j][i]/temp.mat[i][i];
-                    temp = temp
-                        .row_addition_transformation(i, j, -value)
-                        .expect("全然大丈夫じゃない");
+                    let value = temp.mat[j][i] / temp.mat[i][i];
+                    temp = match temp.row_addition_transformation(i, j, -value) {
+                        Ok(v) => v,
+                        Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
+                        Err(_) => panic!("お前大丈夫か？"),
+                    };
                 }
             }
             let mut answer = 1.0;
@@ -894,9 +915,9 @@ mod matrix_test {
                 vec![0.0, -3.0, 3.0, 7.0],
             ],
         };
-        assert!(m1.rank() == 2);
-        assert!(m2.rank() == 2);
-        assert!(m3.rank() == 3);
+        assert!(m1.rank().unwrap() == 2);
+        assert!(m2.rank().unwrap() == 2);
+        assert!(m3.rank().unwrap() == 3);
     }
 
     #[test]
@@ -914,14 +935,14 @@ mod matrix_test {
             cols: 3,
             rows: 3,
             mat: vec![
-                vec![1.0/8.0, -1.0/8.0, 3.0/8.0],
-                vec![5.0/8.0, 3.0/8.0, -1.0/8.0],
-                vec![3.0/8.0, 5.0/8.0, 1.0/8.0],
+                vec![1.0 / 8.0, -1.0 / 8.0, 3.0 / 8.0],
+                vec![5.0 / 8.0, 3.0 / 8.0, -1.0 / 8.0],
+                vec![3.0 / 8.0, 5.0 / 8.0, 1.0 / 8.0],
             ],
         };
         m1.inverse().unwrap().print();
         m2.print();
-        assert!(m1.inverse().unwrap()==m2);
+        assert!(m1.inverse().unwrap() == m2);
     }
 
     #[test]
@@ -934,9 +955,9 @@ mod matrix_test {
                 vec![3.0, -2.0, 1.0, 2.0],
                 vec![3.0, 2.0, 3.0, 4.0],
                 vec![6.0, -5.0, 6.0, 3.0],
-            ]
+            ],
         };
-        let a=m.det().unwrap();
-        assert!(((a-2.0)/a).abs() < 1e-10 && ((a-2.0)/2.0).abs() < 1e-10);
+        let a = m.det().unwrap();
+        assert!(((a - 2.0) / a).abs() < 1e-10 && ((a - 2.0) / 2.0).abs() < 1e-10);
     }
 }
