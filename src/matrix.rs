@@ -211,14 +211,14 @@ impl Matrix {
             temp = match temp.row_multiplying_transformation(i, value) {
                 Ok(v) => v,
                 Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                Err(_) => panic!("そんなはずはない"),
+                Err(_) => unreachable!("そんなはずはない"),
             };
             for j in (i + 1)..self.rows {
                 let value = temp.mat[j][k];
                 temp = match temp.row_addition_transformation(i, j, -value) {
                     Ok(v) => v,
                     Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                    Err(_) => panic!("こんなことはあり得ない"),
+                    Err(_) => unreachable!("こんなことはあり得ない"),
                 };
             }
         }
@@ -231,7 +231,7 @@ impl Matrix {
         } else if match self.rank() {
             Ok(v) => v,
             Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-            Err(_) => panic!("理論上あり得ない"),
+            Err(_) => unreachable!("理論上あり得ない"),
         } != self.rows
         {
             Err(Error::from(ErrorKind::SingularMatrix))
@@ -260,14 +260,14 @@ impl Matrix {
                 temp = match temp.row_multiplying_transformation(i, value) {
                     Ok(v) => v,
                     Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                    Err(_) => panic!("大丈夫か！？"),
+                    Err(_) => unreachable!("大丈夫か！？"),
                 };
                 for j in (i + 1)..self.rows {
                     let value = temp.mat[j][i];
                     temp = match temp.row_addition_transformation(i, j, -value) {
                         Ok(v) => v,
                         Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                        Err(_) => panic!("大丈夫なのか!?"),
+                        Err(_) => unreachable!("大丈夫なのか!?"),
                     };
                 }
             }
@@ -277,7 +277,7 @@ impl Matrix {
                     temp = match temp.row_addition_transformation(i, j, -value) {
                         Ok(v) => v,
                         Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                        Err(_) => panic!("おい大丈夫か！？"),
+                        Err(_) => unreachable!("おい大丈夫か！？"),
                     };
                 }
             }
@@ -311,7 +311,7 @@ impl Matrix {
                     temp = match temp.row_addition_transformation(j, i, 1.0) {
                         Ok(v) => v,
                         Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                        Err(_) => panic!("おいおいダイジョブかよ"),
+                        Err(_) => unreachable!("おいおいダイジョブかよ"),
                     };
                 }
                 for j in (i + 1)..self.rows {
@@ -319,7 +319,7 @@ impl Matrix {
                     temp = match temp.row_addition_transformation(i, j, -value) {
                         Ok(v) => v,
                         Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
-                        Err(_) => panic!("お前大丈夫か？"),
+                        Err(_) => unreachable!("お前大丈夫か？"),
                     };
                 }
             }
