@@ -227,13 +227,14 @@ impl Matrix {
 
     pub fn inverse(&self) -> Result<Self, Error> {
         if self.cols != self.rows {
-            Err(Error::from(ErrorKind::MissmMatchSizeOfMatrix))
-        } else if match self.rank() {
+            return Err(Error::from(ErrorKind::MissmMatchSizeOfMatrix));
+        }
+        let rank = match self.rank() {
             Ok(v) => v,
             Err(e) if e.kind() == ErrorKind::InfinityOrNan => return Err(e),
             Err(_) => unreachable!("理論上あり得ない"),
-        } != self.rows
-        {
+        };
+        if rank != self.rows {
             Err(Error::from(ErrorKind::SingularMatrix))
         } else {
             let mut temp = Matrix {
